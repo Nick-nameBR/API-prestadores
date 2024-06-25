@@ -48,6 +48,7 @@ Breve descrição do projeto.
     ```bash
     php artisan serve
 
-## Documentação Postman
+```markdown
+### Link para para a documentação do teste da APi no Postman:
 
-    Link para para a documentação do teste da APi no Postman: https://documenter.getpostman.com/view/36476928/2sA3drGtr5
+- [Acesso a documentação](https://documenter.getpostman.com/view/36476928/2sA3drGtr5)
