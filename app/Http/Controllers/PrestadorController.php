@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Prestador;
-use App\Models\Servico;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -28,33 +27,33 @@ class PrestadorController extends Controller
         $ordenacao = $request->input('ordenacao', []);
         $filtros = $request->input('filtros', []);
 
-        $prestadores = Prestador::whereHas('servicos', function ($query) use ($servicoId) {
+        // Iniciar a query de Prestador com relação aos serviços
+        $prestadoresQuery = Prestador::whereHas('servicos', function ($query) use ($servicoId) {
             $query->where('servico_id', $servicoId);
         });
 
-        // Aplicar filtros
+        // Aplicar filtros se houver
         if (!empty($filtros)) {
             foreach ($filtros as $key => $value) {
-                $prestadores->where($key, $value);
+                $prestadoresQuery->where($key, $value);
             }
         }
 
-        // Aplicar ordenação
+        // Aplicar ordenação se houver
         foreach ($ordenacao as $key => $value) {
-            $prestadores->orderBy($key, $value);
+            $prestadoresQuery->orderBy($key, $value);
         }
 
-        $prestadores = $prestadores->take($quantidade)->get();
+        // Obter os prestadores limitados pela quantidade solicitada
+        $prestadores = $prestadoresQuery->take($quantidade)->get();
 
-        // Checar status dos prestadores
-        $prestadorIds = $prestadores->pluck('id');
-        $response = Http::withBasicAuth('teste-Infornet', 'c@nsulta-dad0s-ap1-teste-Infornet#24')
-                        ->post('https://teste-infornet.000webhostapp.com/api/prestadores/online', [
-                            'prestadores' => $prestadorIds
-                        ]);
-        $statusData = $response->json();
+        // Obter os IDs dos prestadores para verificar status
+        $prestadorIds = $prestadores->pluck('id')->toArray();
 
-        // Adicionar status ao resultado
+        // Verificar o status dos prestadores através de uma API externa
+        $statusData = $this->getOnlineStatus($prestadorIds);
+
+        // Adicionar status ao resultado dos prestadores
         foreach ($prestadores as $prestador) {
             $prestador->status = $statusData[$prestador->id] ?? 'offline';
         }
@@ -65,13 +64,26 @@ class PrestadorController extends Controller
     public function getCoordinates(Request $request)
     {
         $request->validate([
-            'endereco' => 'required|string'
+            'endereco' => 'required|string',
         ]);
 
-        $endereco = $request->input('endereco');
+        $endereco = urlencode($request->input('endereco'));
+
+        // Realizar a requisição para obter as coordenadas do endereço
         $response = Http::withBasicAuth('teste-Infornet', 'c@nsulta-dad0s-ap1-teste-Infornet#24')
                         ->get("https://teste-infornet.000webhostapp.com/api/endereco/geocode/{$endereco}");
 
         return response()->json($response->json());
+    }
+
+    // Método para obter status online/offline dos prestadores
+    private function getOnlineStatus(array $prestadorIds)
+    {
+        $response = Http::withBasicAuth('teste-Infornet', 'c@nsulta-dad0s-ap1-teste-Infornet#24')
+                        ->post('https://teste-infornet.000webhostapp.com/api/prestadores/online', [
+                            'prestadores' => $prestadorIds,
+                        ]);
+
+        return $response->json();
     }
 }

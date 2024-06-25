@@ -9,6 +9,8 @@ class Servico extends Model
 {
     use HasFactory;
 
+    protected $table = 'servicos';
+
     protected $fillable = ['nome', 'situacao'];
 
     public function prestadores()
